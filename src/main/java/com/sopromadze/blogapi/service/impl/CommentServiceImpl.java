@@ -8,6 +8,7 @@ import com.sopromadze.blogapi.model.role.RoleName;
 import com.sopromadze.blogapi.model.user.User;
 import com.sopromadze.blogapi.payload.ApiResponse;
 import com.sopromadze.blogapi.payload.CommentRequest;
+import com.sopromadze.blogapi.payload.CommentResponse;
 import com.sopromadze.blogapi.payload.PagedResponse;
 import com.sopromadze.blogapi.repository.CommentRepository;
 import com.sopromadze.blogapi.repository.PostRepository;
@@ -23,6 +24,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class CommentServiceImpl implements CommentService {
@@ -48,13 +52,17 @@ public class CommentServiceImpl implements CommentService {
 	private UserRepository userRepository;
 
 	@Override
-	public PagedResponse<Comment> getAllComments(Long postId, int page, int size) {
+	public PagedResponse<CommentResponse> getAllComments(Long postId, int page, int size) {
 		AppUtils.validatePageNumberAndSize(page, size);
 		Pageable pageable = PageRequest.of(page, size, Sort.Direction.DESC, "createdAt");
 
 		Page<Comment> comments = commentRepository.findByPostId(postId, pageable);
 
-		return new PagedResponse<>(comments.getContent(), comments.getNumber(), comments.getSize(),
+		List<CommentResponse> commentResponses = comments.getContent().stream()
+				.map(CommentResponse::from)
+				.collect(Collectors.toList());
+
+		return new PagedResponse<>(commentResponses, comments.getNumber(), comments.getSize(),
 				comments.getTotalElements(), comments.getTotalPages(), comments.isLast());
 	}
 
@@ -72,13 +80,13 @@ public class CommentServiceImpl implements CommentService {
 	}
 
 	@Override
-	public Comment getComment(Long postId, Long id) {
+	public CommentResponse getComment(Long postId, Long id) {
 		Post post = postRepository.findById(postId)
 				.orElseThrow(() -> new ResourceNotFoundException(POST_STR, ID_STR, postId));
 		Comment comment = commentRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException(COMMENT_STR, ID_STR, id));
 		if (comment.getPost().getId().equals(post.getId())) {
-			return comment;
+			return CommentResponse.from(comment);
 		}
 
 		throw new BlogapiException(HttpStatus.BAD_REQUEST, COMMENT_DOES_NOT_BELONG_TO_POST);
