@@ -123,12 +123,14 @@ public class PhotoServiceImpl implements PhotoService {
 	}
 
 	@Override
-	public PagedResponse<PhotoResponse> getAllPhotosByAlbum(Long albumId, int page, int size) {
+	public PagedResponse<PhotoResponse> getAllPhotosByAlbum(Long albumId, String title, int page, int size) {
 		AppUtils.validatePageNumberAndSize(page, size);
 
 		Pageable pageable = PageRequest.of(page, size, Sort.Direction.DESC, AppConstants.CREATED_AT);
 
-		Page<Photo> photos = photoRepository.findByAlbumId(albumId, pageable);
+		Page<Photo> photos = (title == null || title.trim().isEmpty())
+				? photoRepository.findByAlbumId(albumId, pageable)
+				: photoRepository.findByAlbumIdAndTitleContainingIgnoreCase(albumId, title.trim(), pageable);
 
 		List<PhotoResponse> photoResponses = new ArrayList<>(photos.getContent().size());
 		for (Photo photo : photos.getContent()) {

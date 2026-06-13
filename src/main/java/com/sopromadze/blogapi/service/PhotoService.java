@@ -18,6 +18,6 @@ public interface PhotoService {
 
 	ApiResponse deletePhoto(Long id, UserPrincipal currentUser);
 
-	PagedResponse<PhotoResponse> getAllPhotosByAlbum(Long albumId, int page, int size);
+	PagedResponse<PhotoResponse> getAllPhotosByAlbum(Long albumId, String title, int page, int size);
 
 }
