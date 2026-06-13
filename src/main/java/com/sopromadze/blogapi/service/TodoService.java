@@ -11,7 +11,7 @@ public interface TodoService {
 
 	Todo unCompleteTodo(Long id, UserPrincipal currentUser);
 
-	PagedResponse<Todo> getAllTodos(UserPrincipal currentUser, int page, int size);
+	PagedResponse<Todo> getAllTodos(UserPrincipal currentUser, Boolean completed, int page, int size);
 
 	Todo addTodo(Todo todo, UserPrincipal currentUser);
 

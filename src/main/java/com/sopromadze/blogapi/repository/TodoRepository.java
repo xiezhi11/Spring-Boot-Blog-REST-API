@@ -9,4 +9,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface TodoRepository extends JpaRepository<Todo, Long> {
 	Page<Todo> findByCreatedBy(Long userId, Pageable pageable);
+
+	Page<Todo> findByCreatedByAndCompleted(Long userId, Boolean completed, Pageable pageable);
 }

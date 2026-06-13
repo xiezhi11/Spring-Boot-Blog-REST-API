@@ -34,10 +34,11 @@ public class TodoController {
 	@PreAuthorize("hasRole('USER')")
 	public ResponseEntity<PagedResponse<Todo>> getAllTodos(
 			@CurrentUser UserPrincipal currentUser,
+			@RequestParam(value = "completed", required = false) Boolean completed,
 			@RequestParam(value = "page", required = false, defaultValue = AppConstants.DEFAULT_PAGE_NUMBER) Integer page,
 			@RequestParam(name = "size", required = false, defaultValue = AppConstants.DEFAULT_PAGE_SIZE) Integer size) {
 
-		PagedResponse<Todo> response = todoService.getAllTodos(currentUser, page, size);
+		PagedResponse<Todo> response = todoService.getAllTodos(currentUser, completed, page, size);
 
 		return new ResponseEntity< >(response, HttpStatus.OK);
 	}
