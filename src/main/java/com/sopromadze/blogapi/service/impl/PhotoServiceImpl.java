@@ -130,6 +130,26 @@ public class PhotoServiceImpl implements PhotoService {
 
 		Page<Photo> photos = photoRepository.findByAlbumId(albumId, pageable);
 
+		return buildPhotoPagedResponse(photos);
+	}
+
+	@Override
+	public PagedResponse<PhotoResponse> getPhotosByAlbumAndTitle(Long albumId, String keyword, int page, int size) {
+		AppUtils.validatePageNumberAndSize(page, size);
+
+		Pageable pageable = PageRequest.of(page, size, Sort.Direction.DESC, AppConstants.CREATED_AT);
+
+		Page<Photo> photos;
+		if (keyword != null && !keyword.trim().isEmpty()) {
+			photos = photoRepository.findByAlbumIdAndTitleContainingIgnoreCase(albumId, keyword.trim(), pageable);
+		} else {
+			photos = photoRepository.findByAlbumId(albumId, pageable);
+		}
+
+		return buildPhotoPagedResponse(photos);
+	}
+
+	private PagedResponse<PhotoResponse> buildPhotoPagedResponse(Page<Photo> photos) {
 		List<PhotoResponse> photoResponses = new ArrayList<>(photos.getContent().size());
 		for (Photo photo : photos.getContent()) {
 			photoResponses.add(new PhotoResponse(photo.getId(), photo.getTitle(), photo.getUrl(),

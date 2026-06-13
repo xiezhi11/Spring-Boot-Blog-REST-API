@@ -20,4 +20,6 @@ public interface PhotoService {
 
 	PagedResponse<PhotoResponse> getAllPhotosByAlbum(Long albumId, int page, int size);
 
+	PagedResponse<PhotoResponse> getPhotosByAlbumAndTitle(Long albumId, String keyword, int page, int size);
+
 }

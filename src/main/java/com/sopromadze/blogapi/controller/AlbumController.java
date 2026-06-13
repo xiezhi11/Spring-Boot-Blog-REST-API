@@ -80,9 +80,15 @@ public class AlbumController {
 	@GetMapping("/{id}/photos")
 	public ResponseEntity<PagedResponse<PhotoResponse>> getAllPhotosByAlbum(@PathVariable(name = "id") Long id,
 			@RequestParam(name = "page", required = false, defaultValue = AppConstants.DEFAULT_PAGE_NUMBER) Integer page,
-			@RequestParam(name = "size", required = false, defaultValue = AppConstants.DEFAULT_PAGE_SIZE) Integer size) {
+			@RequestParam(name = "size", required = false, defaultValue = AppConstants.DEFAULT_PAGE_SIZE) Integer size,
+			@RequestParam(name = "keyword", required = false) String keyword) {
 
-		PagedResponse<PhotoResponse> response = photoService.getAllPhotosByAlbum(id, page, size);
+		PagedResponse<PhotoResponse> response;
+		if (keyword != null && !keyword.trim().isEmpty()) {
+			response = photoService.getPhotosByAlbumAndTitle(id, keyword, page, size);
+		} else {
+			response = photoService.getAllPhotosByAlbum(id, page, size);
+		}
 
 		return new ResponseEntity<>(response, HttpStatus.OK);
 	}
