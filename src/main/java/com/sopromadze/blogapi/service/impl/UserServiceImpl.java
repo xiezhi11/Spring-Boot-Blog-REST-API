@@ -99,6 +99,23 @@ public class UserServiceImpl implements UserService {
 		User user = userRepository.getUserByName(username);
 		if (user.getId().equals(currentUser.getId())
 				|| currentUser.getAuthorities().contains(new SimpleGrantedAuthority(RoleName.ROLE_ADMIN.toString()))) {
+
+			if (newUser.getUsername() != null && !newUser.getUsername().equals(user.getUsername())) {
+				if (userRepository.existsByUsername(newUser.getUsername())) {
+					ApiResponse apiResponse = new ApiResponse(Boolean.FALSE, "Username is already taken");
+					throw new BadRequestException(apiResponse);
+				}
+				user.setUsername(newUser.getUsername());
+			}
+
+			if (newUser.getEmail() != null && !newUser.getEmail().equals(user.getEmail())) {
+				if (userRepository.existsByEmail(newUser.getEmail())) {
+					ApiResponse apiResponse = new ApiResponse(Boolean.FALSE, "Email is already taken");
+					throw new BadRequestException(apiResponse);
+				}
+				user.setEmail(newUser.getEmail());
+			}
+
 			user.setFirstName(newUser.getFirstName());
 			user.setLastName(newUser.getLastName());
 			user.setPassword(passwordEncoder.encode(newUser.getPassword()));
