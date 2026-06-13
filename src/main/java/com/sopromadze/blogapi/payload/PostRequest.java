@@ -27,7 +27,21 @@ public class PostRequest {
 
 	public List<String> getTags() {
 
-		return tags == null ? Collections.emptyList() : new ArrayList<>(tags);
+		if (tags == null) {
+			return Collections.emptyList();
+		}
+
+		List<String> cleaned = new ArrayList<>(tags.size());
+		for (String tag : tags) {
+			if (tag == null) {
+				continue;
+			}
+			String trimmed = tag.trim();
+			if (!trimmed.isEmpty()) {
+				cleaned.add(trimmed);
+			}
+		}
+		return cleaned;
 	}
 
 	public void setTags(List<String> tags) {

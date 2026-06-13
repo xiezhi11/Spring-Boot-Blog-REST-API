@@ -30,7 +30,10 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 import static com.sopromadze.blogapi.utils.AppConstants.CATEGORY;
 import static com.sopromadze.blogapi.utils.AppConstants.CREATED_AT;
@@ -121,6 +124,7 @@ public class PostServiceImpl implements PostService {
 			post.setTitle(newPostRequest.getTitle());
 			post.setBody(newPostRequest.getBody());
 			post.setCategory(category);
+			post.setTags(resolveTags(newPostRequest.getTags()));
 			return postRepository.save(post);
 		}
 		ApiResponse apiResponse = new ApiResponse(Boolean.FALSE, "You don't have permission to edit this post");
@@ -149,14 +153,7 @@ public class PostServiceImpl implements PostService {
 		Category category = categoryRepository.findById(postRequest.getCategoryId())
 				.orElseThrow(() -> new ResourceNotFoundException(CATEGORY, ID, postRequest.getCategoryId()));
 
-		List<Tag> tags = new ArrayList<>(postRequest.getTags().size());
-
-		for (String name : postRequest.getTags()) {
-			Tag tag = tagRepository.findByName(name);
-			tag = tag == null ? tagRepository.save(new Tag(name)) : tag;
-
-			tags.add(tag);
-		}
+		List<Tag> tags = resolveTags(postRequest.getTags());
 
 		Post post = new Post();
 		post.setBody(postRequest.getBody());
@@ -182,6 +179,37 @@ public class PostServiceImpl implements PostService {
 		postResponse.setTags(tagNames);
 
 		return postResponse;
+	}
+
+	/**
+	 * Normalizes incoming tag names and resolves them to persistent {@link Tag} entities:
+	 * trims whitespace, drops null/blank entries, and deduplicates case-insensitively
+	 * (keeping the first-seen casing). Existing tags are reused via a case-insensitive
+	 * lookup; otherwise a new tag is created. Order of first appearance is preserved.
+	 */
+	private List<Tag> resolveTags(List<String> tagNames) {
+		List<Tag> tags = new ArrayList<>();
+		Set<String> seenKeys = new HashSet<>();
+
+		for (String tagName : tagNames) {
+			if (tagName == null) {
+				continue;
+			}
+
+			String name = tagName.trim();
+			if (name.isEmpty()) {
+				continue;
+			}
+
+			if (!seenKeys.add(name.toLowerCase(Locale.ROOT))) {
+				continue;
+			}
+
+			Tag tag = tagRepository.findByNameIgnoreCase(name);
+			tags.add(tag == null ? tagRepository.save(new Tag(name)) : tag);
+		}
+
+		return tags;
 	}
 
 	@Override
