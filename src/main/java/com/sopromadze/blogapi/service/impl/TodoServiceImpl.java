@@ -67,11 +67,13 @@ public class TodoServiceImpl implements TodoService {
 	}
 
 	@Override
-	public PagedResponse<Todo> getAllTodos(UserPrincipal currentUser, int page, int size) {
+	public PagedResponse<Todo> getAllTodos(UserPrincipal currentUser, int page, int size, Boolean completed) {
 		validatePageNumberAndSize(page, size);
 		Pageable pageable = PageRequest.of(page, size, Sort.Direction.DESC, CREATED_AT);
 
-		Page<Todo> todos = todoRepository.findByCreatedBy(currentUser.getId(), pageable);
+		Page<Todo> todos = (completed != null)
+				? todoRepository.findByCreatedByAndCompleted(currentUser.getId(), completed, pageable)
+				: todoRepository.findByCreatedBy(currentUser.getId(), pageable);
 
 		List<Todo> content = todos.getNumberOfElements() == 0 ? Collections.emptyList() : todos.getContent();
 
