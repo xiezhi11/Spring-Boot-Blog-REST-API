@@ -31,6 +31,8 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
 
 import static com.sopromadze.blogapi.utils.AppConstants.CATEGORY;
 import static com.sopromadze.blogapi.utils.AppConstants.CREATED_AT;
@@ -121,6 +123,11 @@ public class PostServiceImpl implements PostService {
 			post.setTitle(newPostRequest.getTitle());
 			post.setBody(newPostRequest.getBody());
 			post.setCategory(category);
+
+			List<String> normalizedTags = normalizeTags(newPostRequest.getTags());
+			List<Tag> tags = resolveTags(normalizedTags);
+			post.setTags(tags);
+
 			return postRepository.save(post);
 		}
 		ApiResponse apiResponse = new ApiResponse(Boolean.FALSE, "You don't have permission to edit this post");
@@ -149,14 +156,8 @@ public class PostServiceImpl implements PostService {
 		Category category = categoryRepository.findById(postRequest.getCategoryId())
 				.orElseThrow(() -> new ResourceNotFoundException(CATEGORY, ID, postRequest.getCategoryId()));
 
-		List<Tag> tags = new ArrayList<>(postRequest.getTags().size());
-
-		for (String name : postRequest.getTags()) {
-			Tag tag = tagRepository.findByName(name);
-			tag = tag == null ? tagRepository.save(new Tag(name)) : tag;
-
-			tags.add(tag);
-		}
+		List<String> normalizedTags = normalizeTags(postRequest.getTags());
+		List<Tag> tags = resolveTags(normalizedTags);
 
 		Post post = new Post();
 		post.setBody(postRequest.getBody());
@@ -173,11 +174,10 @@ public class PostServiceImpl implements PostService {
 		postResponse.setBody(newPost.getBody());
 		postResponse.setCategory(newPost.getCategory().getName());
 
-		List<String> tagNames = new ArrayList<>(newPost.getTags().size());
-
-		for (Tag tag : newPost.getTags()) {
-			tagNames.add(tag.getName());
-		}
+		List<String> tagNames = newPost.getTags().stream()
+				.map(Tag::getName)
+				.sorted()
+				.collect(Collectors.toList());
 
 		postResponse.setTags(tagNames);
 
@@ -187,6 +187,38 @@ public class PostServiceImpl implements PostService {
 	@Override
 	public Post getPost(Long id) {
 		return postRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException(POST, ID, id));
+	}
+
+	/**
+	 * Normalize tag names: trim whitespace, filter out blank/null entries,
+	 * convert to lowercase for consistency, and remove duplicates while
+	 * preserving insertion order.
+	 */
+	private List<String> normalizeTags(List<String> tags) {
+		if (tags == null) {
+			return Collections.emptyList();
+		}
+		return tags.stream()
+				.filter(tag -> tag != null && !tag.trim().isEmpty())
+				.map(tag -> tag.trim().toLowerCase(Locale.ROOT))
+				.distinct()
+				.collect(Collectors.toList());
+	}
+
+	/**
+	 * Resolve a list of normalized tag names into Tag entities.
+	 * If a tag does not yet exist in the database it is created and persisted.
+	 */
+	private List<Tag> resolveTags(List<String> normalizedTagNames) {
+		List<Tag> tags = new ArrayList<>(normalizedTagNames.size());
+		for (String name : normalizedTagNames) {
+			Tag tag = tagRepository.findByNameIgnoreCase(name);
+			if (tag == null) {
+				tag = tagRepository.save(new Tag(name));
+			}
+			tags.add(tag);
+		}
+		return tags;
 	}
 
 	private void validatePageNumberAndSize(int page, int size) {
