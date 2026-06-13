@@ -8,7 +8,9 @@ import com.sopromadze.blogapi.model.role.RoleName;
 import com.sopromadze.blogapi.model.user.User;
 import com.sopromadze.blogapi.payload.ApiResponse;
 import com.sopromadze.blogapi.payload.CommentRequest;
+import com.sopromadze.blogapi.payload.CommentResponse;
 import com.sopromadze.blogapi.payload.PagedResponse;
+import com.sopromadze.blogapi.payload.UserSummary;
 import com.sopromadze.blogapi.repository.CommentRepository;
 import com.sopromadze.blogapi.repository.PostRepository;
 import com.sopromadze.blogapi.repository.UserRepository;
@@ -23,6 +25,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class CommentServiceImpl implements CommentService {
@@ -48,18 +53,22 @@ public class CommentServiceImpl implements CommentService {
 	private UserRepository userRepository;
 
 	@Override
-	public PagedResponse<Comment> getAllComments(Long postId, int page, int size) {
+	public PagedResponse<CommentResponse> getAllComments(Long postId, int page, int size) {
 		AppUtils.validatePageNumberAndSize(page, size);
 		Pageable pageable = PageRequest.of(page, size, Sort.Direction.DESC, "createdAt");
 
 		Page<Comment> comments = commentRepository.findByPostId(postId, pageable);
 
-		return new PagedResponse<>(comments.getContent(), comments.getNumber(), comments.getSize(),
+		List<CommentResponse> commentResponses = comments.getContent().stream()
+				.map(this::toCommentResponse)
+				.collect(Collectors.toList());
+
+		return new PagedResponse<>(commentResponses, comments.getNumber(), comments.getSize(),
 				comments.getTotalElements(), comments.getTotalPages(), comments.isLast());
 	}
 
 	@Override
-	public Comment addComment(CommentRequest commentRequest, Long postId, UserPrincipal currentUser) {
+	public CommentResponse addComment(CommentRequest commentRequest, Long postId, UserPrincipal currentUser) {
 		Post post = postRepository.findById(postId)
 				.orElseThrow(() -> new ResourceNotFoundException(POST_STR, ID_STR, postId));
 		User user = userRepository.getUser(currentUser);
@@ -68,24 +77,24 @@ public class CommentServiceImpl implements CommentService {
 		comment.setPost(post);
 		comment.setName(currentUser.getUsername());
 		comment.setEmail(currentUser.getEmail());
-		return commentRepository.save(comment);
+		return toCommentResponse(commentRepository.save(comment));
 	}
 
 	@Override
-	public Comment getComment(Long postId, Long id) {
+	public CommentResponse getComment(Long postId, Long id) {
 		Post post = postRepository.findById(postId)
 				.orElseThrow(() -> new ResourceNotFoundException(POST_STR, ID_STR, postId));
 		Comment comment = commentRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException(COMMENT_STR, ID_STR, id));
 		if (comment.getPost().getId().equals(post.getId())) {
-			return comment;
+			return toCommentResponse(comment);
 		}
 
 		throw new BlogapiException(HttpStatus.BAD_REQUEST, COMMENT_DOES_NOT_BELONG_TO_POST);
 	}
 
 	@Override
-	public Comment updateComment(Long postId, Long id, CommentRequest commentRequest,
+	public CommentResponse updateComment(Long postId, Long id, CommentRequest commentRequest,
 			UserPrincipal currentUser) {
 		Post post = postRepository.findById(postId)
 				.orElseThrow(() -> new ResourceNotFoundException(POST_STR, ID_STR, postId));
@@ -99,7 +108,7 @@ public class CommentServiceImpl implements CommentService {
 		if (comment.getUser().getId().equals(currentUser.getId())
 				|| currentUser.getAuthorities().contains(new SimpleGrantedAuthority(RoleName.ROLE_ADMIN.toString()))) {
 			comment.setBody(commentRequest.getBody());
-			return commentRepository.save(comment);
+			return toCommentResponse(commentRepository.save(comment));
 		}
 
 		throw new BlogapiException(HttpStatus.UNAUTHORIZED, YOU_DON_T_HAVE_PERMISSION_TO + "update" + THIS_COMMENT);
@@ -123,5 +132,27 @@ public class CommentServiceImpl implements CommentService {
 		}
 
 		throw new BlogapiException(HttpStatus.UNAUTHORIZED, YOU_DON_T_HAVE_PERMISSION_TO + "delete" + THIS_COMMENT);
+	}
+
+	/**
+	 * Convert a Comment entity to a CommentResponse DTO, embedding safe author basic info.
+	 * Sensitive user fields (password, roles, address, phone, etc.) are not exposed.
+	 */
+	private CommentResponse toCommentResponse(Comment comment) {
+		CommentResponse response = new CommentResponse();
+		response.setId(comment.getId());
+		response.setName(comment.getName());
+		response.setEmail(comment.getEmail());
+		response.setBody(comment.getBody());
+		response.setCreatedAt(comment.getCreatedAt());
+
+		User user = comment.getUser();
+		if (user != null) {
+			UserSummary author = new UserSummary(user.getId(), user.getUsername(),
+					user.getFirstName(), user.getLastName());
+			response.setAuthor(author);
+		}
+
+		return response;
 	}
 }

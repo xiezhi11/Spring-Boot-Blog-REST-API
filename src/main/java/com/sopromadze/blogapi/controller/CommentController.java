@@ -1,8 +1,8 @@
 package com.sopromadze.blogapi.controller;
 
-import com.sopromadze.blogapi.model.Comment;
 import com.sopromadze.blogapi.payload.ApiResponse;
 import com.sopromadze.blogapi.payload.CommentRequest;
+import com.sopromadze.blogapi.payload.CommentResponse;
 import com.sopromadze.blogapi.payload.PagedResponse;
 import com.sopromadze.blogapi.security.CurrentUser;
 import com.sopromadze.blogapi.security.UserPrincipal;
@@ -31,39 +31,39 @@ public class CommentController {
 	private CommentService commentService;
 
 	@GetMapping
-	public ResponseEntity<PagedResponse<Comment>> getAllComments(@PathVariable(name = "postId") Long postId,
+	public ResponseEntity<PagedResponse<CommentResponse>> getAllComments(@PathVariable(name = "postId") Long postId,
 			@RequestParam(name = "page", required = false, defaultValue = AppConstants.DEFAULT_PAGE_NUMBER) Integer page,
 			@RequestParam(name = "size", required = false, defaultValue = AppConstants.DEFAULT_PAGE_SIZE) Integer size) {
 
-		PagedResponse<Comment> allComments = commentService.getAllComments(postId, page, size);
+		PagedResponse<CommentResponse> allComments = commentService.getAllComments(postId, page, size);
 
-		return new ResponseEntity< >(allComments, HttpStatus.OK);
+		return new ResponseEntity<>(allComments, HttpStatus.OK);
 	}
 
 	@PostMapping
 	@PreAuthorize("hasRole('USER')")
-	public ResponseEntity<Comment> addComment(@Valid @RequestBody CommentRequest commentRequest,
+	public ResponseEntity<CommentResponse> addComment(@Valid @RequestBody CommentRequest commentRequest,
 			@PathVariable(name = "postId") Long postId, @CurrentUser UserPrincipal currentUser) {
-		Comment newComment = commentService.addComment(commentRequest, postId, currentUser);
+		CommentResponse newComment = commentService.addComment(commentRequest, postId, currentUser);
 
 		return new ResponseEntity<>(newComment, HttpStatus.CREATED);
 	}
 
 	@GetMapping("/{id}")
-	public ResponseEntity<Comment> getComment(@PathVariable(name = "postId") Long postId,
+	public ResponseEntity<CommentResponse> getComment(@PathVariable(name = "postId") Long postId,
 			@PathVariable(name = "id") Long id) {
-		Comment comment = commentService.getComment(postId, id);
+		CommentResponse comment = commentService.getComment(postId, id);
 
 		return new ResponseEntity<>(comment, HttpStatus.OK);
 	}
 
 	@PutMapping("/{id}")
 	@PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
-	public ResponseEntity<Comment> updateComment(@PathVariable(name = "postId") Long postId,
+	public ResponseEntity<CommentResponse> updateComment(@PathVariable(name = "postId") Long postId,
 			@PathVariable(name = "id") Long id, @Valid @RequestBody CommentRequest commentRequest,
 			@CurrentUser UserPrincipal currentUser) {
 
-		Comment updatedComment = commentService.updateComment(postId, id, commentRequest, currentUser);
+		CommentResponse updatedComment = commentService.updateComment(postId, id, commentRequest, currentUser);
 
 		return new ResponseEntity<>(updatedComment, HttpStatus.OK);
 	}
